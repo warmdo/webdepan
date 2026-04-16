@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard Akun Compact - Google Sheet</title>
+<title>Dashboard Akun Final - Google Sheet</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 body{font-family:Arial,sans-serif;background:#f0f2f5;margin:20px;}
@@ -11,6 +11,8 @@ h2{background:linear-gradient(90deg,#7b1fa2,#9c27b0);color:white;padding:15px;bo
 input,select{padding:5px;border-radius:5px;border:1px solid #ccc;font-size:12px;}
 button{padding:5px 8px;border:none;border-radius:5px;background:#6a1b9a;color:white;font-size:12px;cursor:pointer;transition:0.2s;}
 button:hover{background:#4a148c;}
+.button-danger{background:#d32f2f;}
+.button-danger:hover{background:#b71c1c;}
 .table-container{overflow-x:auto;border:1px solid #ccc;border-radius:8px;background:white;}
 table{width:100%;border-collapse:collapse;}
 th{background:linear-gradient(90deg,#7b1fa2,#9c27b0);color:white;padding:8px;cursor:pointer;position:sticky;top:0;font-size:12px;}
@@ -18,17 +20,19 @@ td{padding:5px;border-bottom:1px solid #eee;font-size:12px;word-break:break-word
 td.link, td.keterangan{max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 tr:hover{background:#f9f9f9;}
 .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);}
-.modal-content{background:white;padding:15px;width:320px;max-width:90%;margin:80px auto;border-radius:8px;display:grid;grid-template-columns:1fr 1fr;grid-gap:8px;}
+.modal-content{background:white;padding:15px;width:360px;max-width:90%;margin:80px auto;border-radius:8px;display:grid;grid-template-columns:1fr 1fr;grid-gap:8px;}
 .copy-btn{padding:2px 5px;font-size:10px;margin-left:2px;border-radius:3px;background:#6a1b9a;color:white;cursor:pointer;}
 .copy-btn:hover{background:#4a148c;}
 .pagination{margin-top:10px;display:flex;gap:5px;align-items:center;font-size:12px;}
 .toast{position:fixed;bottom:15px;right:15px;background:#333;color:white;padding:8px 12px;border-radius:5px;display:none;opacity:0;transition:0.5s;z-index:1000;}
+#previewTable{margin-top:10px;border:1px solid #ccc;border-collapse:collapse;}
+#previewTable th, #previewTable td{border:1px solid #ccc;padding:5px;font-size:12px;}
 @media(max-width:600px){.topbar{flex-direction:column;} th, td{font-size:10px;} button{font-size:10px;}}
 </style>
 </head>
 <body>
 
-<h2>Dashboard Akun Compact - Google Sheet</h2>
+<h2>Dashboard Akun Final - Google Sheet</h2>
 
 <div class="topbar">
 <input type="text" id="search" placeholder="Cari..." onkeyup="renderTable()">
@@ -36,6 +40,8 @@ tr:hover{background:#f9f9f9;}
 <select id="filterKategori" onchange="renderTable()"><option value="">Semua Kategori</option></select>
 <button onclick="openModal()">+ Tambah</button>
 <button onclick="exportExcel()">Export Excel</button>
+<input type="file" id="fileInput" accept=".xlsx,.csv" onchange="previewImport(event)">
+<button class="button-danger" onclick="clearPreview()">Hapus Preview</button>
 </div>
 
 <div class="table-container">
@@ -55,6 +61,19 @@ tr:hover{background:#f9f9f9;}
 </thead>
 <tbody id="tbody"></tbody>
 </table>
+</div>
+
+<div id="previewContainer">
+<h4>Preview Import</h4>
+<table id="previewTable">
+<thead>
+<tr>
+<th>Web</th><th>Kategori</th><th>Akun</th><th>Sandi</th><th>Pin</th><th>Otp</th><th>Link</th><th>Keterangan</th>
+</tr>
+</thead>
+<tbody id="previewBody"></tbody>
+</table>
+<button id="confirmImport" style="display:none;" onclick="confirmImport()">Masukkan ke Dashboard</button>
 </div>
 
 <div class="pagination">
@@ -83,14 +102,14 @@ tr:hover{background:#f9f9f9;}
 <div class="toast" id="toast"></div>
 
 <script>
-let data=[], editIndex=-1, currentPage=1, perPage=10, sortField="", sortAsc=true;
+let data=[], previewData=[], editIndex=-1, currentPage=1, perPage=10, sortField="", sortAsc=true;
 
 // Ganti dengan URL Web App Google Sheet kamu
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbw8yKutg2GCd7drcbuzujpmLqy0PjgXEfnBI-AYFlMPKG8w4aFJ7Zh3Mi6tFlmNdjZs/exec"; 
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbx8DDByOwXXn9fSnwYGiG3OoNQ3dUOqjpSpLpRyNaM8p5PJnWBHo5464SB_V604ZRPj/exec";
 
 function showToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.style.display="block";setTimeout(()=>{t.style.opacity=1;},50);setTimeout(()=>{t.style.opacity=0;setTimeout(()=>{t.style.display="none";},500);},1500);}
 
-// Ambil data dari Google Sheet
+// Ambil data dari Sheet
 async function loadDataFromSheet(){
   const res = await fetch(SHEET_URL);
   const sheetData = await res.json();
@@ -98,7 +117,7 @@ async function loadDataFromSheet(){
   renderTable();
 }
 
-// Simpan data ke Google Sheet
+// Simpan data ke Sheet
 async function saveDataToSheet(obj){
   await fetch(SHEET_URL,{
     method:"POST",
@@ -118,18 +137,8 @@ function saveData(){
 
 function openModal(){editIndex=-1;document.getElementById("modal").style.display="block";}
 function closeModal(){document.getElementById("modal").style.display="none";document.querySelectorAll("#modal input").forEach(i=>i.value="");}
-
-function editRow(i){editIndex=i;const d=data[i];Object.keys(d).forEach(key=>{const input=document.getElementById(key); if(input) input.value=d[key];});openModal();}
-
-function deleteRow(i){
-  if(confirm("Hapus data?")){
-    data.splice(i,1);
-    // Perlu implement delete di Google Sheet via Apps Script tambahan jika ingin permanen
-    showToast("Data dihapus lokal, untuk permanen perlu Apps Script tambahan.");
-    renderTable();
-  }
-}
-
+function editRow(i){editIndex=i;const d=data[i];Object.keys(d).forEach(key=>{const input=document.getElementById(key);if(input)input.value=d[key];});openModal();}
+function deleteRow(i){if(confirm("Hapus data?")){data.splice(i,1);showToast("Data dihapus lokal, permanen perlu Apps Script tambahan");renderTable();}}
 function copyText(text){navigator.clipboard.writeText(text);showToast("Disalin!");}
 function togglePw(id){const pw=document.getElementById("pw"+id);const mask=document.getElementById("mask"+id);if(pw.style.display==="none"){pw.style.display="inline";mask.style.display="none";}else{pw.style.display="none";mask.style.display="inline";}}
 function sortTable(field){if(sortField===field) sortAsc=!sortAsc; else{sortField=field;sortAsc=true;} renderTable();}
@@ -161,6 +170,42 @@ function fillDropdown(id,arr){const select=document.getElementById(id);const val
 function next(){currentPage++;renderTable();}
 function prev(){if(currentPage>1){currentPage--;renderTable();}}
 function exportExcel(){const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Data");XLSX.writeFile(wb,"data-akun.xlsx");}
+
+// Preview import
+function previewImport(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload=function(e){
+    const arr=new Uint8Array(e.target.result);
+    const workbook=XLSX.read(arr,{type:'array'});
+    const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+    previewData=sheet;
+    const previewBody=document.getElementById("previewBody");
+    previewBody.innerHTML="";
+    previewData.forEach(d=>{
+      previewBody.innerHTML+=`<tr>
+<td>${d.web||""}</td><td>${d.kategori||""}</td><td>${d.akun||""}</td><td>${d.sandi||""}</td><td>${d.pin||""}</td><td>${d.otp||""}</td><td>${d.link||""}</td><td>${d.keterangan||""}</td>
+</tr>`;
+    });
+    document.getElementById("confirmImport").style.display="inline-block";
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// Konfirmasi import
+function confirmImport(){
+  previewData.forEach(obj=>saveDataToSheet(obj));
+  clearPreview();
+}
+
+// Hapus preview
+function clearPreview(){
+  previewData=[];
+  document.getElementById("previewBody").innerHTML="";
+  document.getElementById("confirmImport").style.display="none";
+  showToast("Preview berhasil dibersihkan!");
+}
 
 loadDataFromSheet();
 </script>
