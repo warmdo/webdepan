@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard Akun Web Depan</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+body{font-family:Arial,sans-serif;background:#f0f2f5;margin:20px;}
+h2{background:linear-gradient(90deg,#7b1fa2,#9c27b0);color:white;padding:15px;border-radius:8px;text-align:center;margin-bottom:20px;}
+.topbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:15px;}
+input,select{padding:7px;border-radius:5px;border:1px solid #ccc;}
+button{padding:6px 10px;border:none;border-radius:5px;background:#6a1b9a;color:white;font-size:13px;cursor:pointer;transition:0.2s;}
+button:hover{background:#4a148c;}
+.table-container{overflow-x:auto;border:1px solid #ccc;border-radius:8px;background:white;}
+table{width:100%;border-collapse:collapse;}
+th{background:linear-gradient(90deg,#7b1fa2,#9c27b0);color:white;padding:10px;cursor:pointer;position:sticky;top:0;}
+td{padding:8px;border-bottom:1px solid #eee;font-size:13px;word-break:break-word;}
+td.link, td.keterangan{max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+tr:hover{background:#f9f9f9;}
+.status-confirmed{background:#d4edda;color:#155724;padding:3px 6px;border-radius:12px;font-weight:bold;font-size:12px;text-align:center;}
+.status-pending{background:#fff3cd;color:#856404;padding:3px 6px;border-radius:12px;font-weight:bold;font-size:12px;text-align:center;}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);}
+.modal-content{background:white;padding:20px;width:360px;max-width:90%;margin:80px auto;border-radius:8px;display:grid;grid-gap:10px;animation:slideDown 0.3s;}
+@keyframes slideDown{from{transform:translateY(-50px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.copy-btn{padding:2px 5px;font-size:10px;margin-left:3px;border-radius:3px;background:#6a1b9a;color:white;cursor:pointer;transition:0.2s;}
+.copy-btn:hover{background:#4a148c;}
+.pagination{margin-top:10px;display:flex;gap:5px;align-items:center;font-size:14px;}
+.toast{position:fixed;bottom:20px;right:20px;background:#333;color:white;padding:10px 15px;border-radius:5px;display:none;opacity:0;transition:0.5s;z-index:1000;}
+@media(max-width:600px){.topbar{flex-direction:column;} th, td{font-size:12px;} button{font-size:12px;}}
+</style>
+</head>
+<body>
+
+<h2>Dashboard Akun Web Depan</h2>
+
+<div class="topbar">
+<input type="text" id="search" placeholder="Cari..." onkeyup="renderTable()">
+<select id="filterWeb" onchange="renderTable()"><option value="">Semua Web</option></select>
+<select id="filterKategori" onchange="renderTable()"><option value="">Semua Kategori</option></select>
+<button onclick="openModal()">+ Tambah</button>
+<button onclick="exportExcel()">Export Excel</button>
+<input type="file" id="fileInput" accept=".xlsx,.csv" onchange="importFile(event)">
+</div>
+
+<div class="table-container">
+<table>
+<thead>
+<tr>
+<th onclick="sortTable('web')">Web ▲▼</th>
+<th onclick="sortTable('kategori')">Kategori ▲▼</th>
+<th>Akun</th>
+<th>Sandi</th>
+<th>Pin</th>
+<th>Otp</th>
+<th class="link">Link</th>
+<th class="keterangan">Keterangan</th>
+<th onclick="sortTable('status')">Status ▲▼</th>
+<th>Aksi</th>
+</tr>
+</thead>
+<tbody id="tbody"></tbody>
+</table>
+</div>
+
+<div class="pagination">
+<button onclick="prev()">Prev</button>
+<span id="pageInfo"></span>
+<button onclick="next()">Next</button>
+</div>
+
+<div class="modal" id="modal">
+<div class="modal-content">
+<h3>Input / Edit Data</h3>
+<input id="web" placeholder="Web">
+<input id="kategori" placeholder="Kategori">
+<input id="akun" placeholder="Akun">
+<input id="sandi" placeholder="Sandi">
+<input id="pin" placeholder="Pin">
+<input id="otp" placeholder="Otp">
+<input id="link" placeholder="Link">
+<input id="keterangan" placeholder="Keterangan">
+<select id="status"><option value="Confirmed">Confirmed</option><option value="Pending">Pending</option></select>
+<div style="display:flex;gap:5px;justify-content:flex-end;">
+<button onclick="saveData()">Simpan</button>
+<button onclick="closeModal()">Batal</button>
+</div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let data=JSON.parse(localStorage.getItem("akun"))||[];
+let editIndex=-1,currentPage=1,perPage=10,sortField="",sortAsc=true;
+
+function showToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.style.display="block";setTimeout(()=>{t.style.opacity=1;},50);setTimeout(()=>{t.style.opacity=0;setTimeout(()=>{t.style.display="none";},500);},1500);}
+function saveData(){const obj={web:web.value,kategori:kategori.value,akun:akun.value,sandi:sandi.value,pin:pin.value,otp:otp.value,link:link.value,keterangan:keterangan.value,status:status.value};if(!obj.web||!obj.akun||!obj.sandi){showToast("Web, Akun, Sandi wajib diisi");return;}if(editIndex>=0)data[editIndex]=obj;else data.push(obj);localStorage.setItem("akun",JSON.stringify(data));closeModal();renderTable();showToast("Data tersimpan!");}
+function openModal(){editIndex=-1;document.getElementById("modal").style.display="block";}
+function closeModal(){document.getElementById("modal").style.display="none";editIndex=-1;document.querySelectorAll("#modal input").forEach(i=>i.value="");}
+function editRow(i){editIndex=i;const d=data[i];Object.keys(d).forEach(key=>{const input=document.getElementById(key); if(input) input.value=d[key];});openModal();}
+function deleteRow(i){if(confirm("Hapus data?")){data.splice(i,1);localStorage.setItem("akun",JSON.stringify(data));renderTable();showToast("Data dihapus!");}}
+function copyText(text){navigator.clipboard.writeText(text);showToast("Disalin!");}
+function togglePw(id){const pw=document.getElementById("pw"+id);const mask=document.getElementById("mask"+id);if(pw.style.display==="none"){pw.style.display="inline";mask.style.display="none";}else{pw.style.display="none";mask.style.display="inline";}}
+function sortTable(field){if(sortField===field) sortAsc=!sortAsc; else{sortField=field;sortAsc=true;} renderTable();}
+function renderTable(){
+const tbody=document.getElementById("tbody");
+const search=document.getElementById("search").value.toLowerCase();
+const filterWeb=document.getElementById("filterWeb").value;
+const filterKategori=document.getElementById("filterKategori").value;
+let filtered=data.filter(d=>Object.values(d).join(" ").toLowerCase().includes(search)&&(filterWeb===""||d.web===filterWeb)&&(filterKategori===""||d.kategori===filterKategori));
+if(sortField) filtered.sort((a,b)=>a[sortField]<b[sortField]?sortAsc?-1:1:a[sortField]>b[sortField]?sortAsc?1:-1:0);
+const start=(currentPage-1)*perPage;
+const pageData=filtered.slice(start,start+perPage);
+tbody.innerHTML="";
+pageData.forEach((d,i)=>{tbody.innerHTML+=`<tr>
+<td>${d.web}</td><td>${d.kategori}</td>
+<td>${d.akun} <button class="copy-btn" onclick="copyText('${d.akun}')">📋</button></td>
+<td><span id="pw${i}" style="display:none">${d.sandi}</span><span id="mask${i}">••••••</span><button class="copy-btn" onclick="togglePw(${i})">👁</button><button class="copy-btn" onclick="copyText('${d.sandi}')">📋</button></td>
+<td>${d.pin}</td><td>${d.otp}</td>
+<td class="link" title="${d.link}">${d.link}</td>
+<td class="keterangan" title="${d.keterangan}">${d.keterangan}</td>
+<td class="${d.status==='Confirmed'?'status-confirmed':'status-pending'}">${d.status}</td>
+<td><div style="display:flex;gap:3px;"><button class="copy-btn" onclick="editRow(${i+start})">Edit</button><button class="copy-btn" onclick="deleteRow(${i+start})">Hapus</button></div></td></tr>`;});
+fillDropdown("filterWeb",filtered.map(d=>d.web));
+fillDropdown("filterKategori",filtered.map(d=>d.kategori));
+document.getElementById("pageInfo").innerText=`Halaman ${currentPage} dari ${Math.max(Math.ceil(filtered.length/perPage),1)}`;
+}
+function fillDropdown(id,arr){const select=document.getElementById(id);const val=select.value;const unique=[...new Set(arr)];select.innerHTML=`<option value="">Semua</option>`;unique.forEach(v=>select.innerHTML+=`<option value="${v}">${v}</option>`);select.value=val;}
+function next(){currentPage++;renderTable();}
+function prev(){if(currentPage>1){currentPage--;renderTable();}}
+function exportExcel(){const ws=XLSX.utils.json_to_sheet(data);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Data");XLSX.writeFile(wb,"data-akun.xlsx");}
+function importFile(event){const file=event.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(e){const arr=new Uint8Array(e.target.result);const workbook=XLSX.read(arr,{type:'array'});const sheet=workbook.Sheets[workbook.SheetNames[0]];const imported=XLSX.utils.sheet_to_json(sheet);data=imported.concat(data);localStorage.setItem("akun",JSON.stringify(data));renderTable();showToast("Data berhasil diimport!");};reader.readAsArrayBuffer(file);}
+renderTable();
+</script>
+
+</body>
+</html>
