@@ -2,127 +2,414 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Dashboard Akun Final</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<title>Dashboard Akun</title>
+
 <style>
-/* Styles sama seperti versi sebelumnya (modern, responsive) */
-body{font-family:Arial;background:#f0f2f5;margin:20px;}
-h2{background:linear-gradient(90deg,#7b1fa2,#9c27b0);color:white;padding:15px;border-radius:8px;text-align:center;margin-bottom:20px;}
-.topbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:15px;}
-input,select{padding:5px;border-radius:5px;border:1px solid #ccc;font-size:12px;}
-button{padding:5px 8px;border:none;border-radius:5px;background:#6a1b9a;color:white;font-size:12px;cursor:pointer;transition:0.2s;}
-button:hover{background:#4a148c;}
-.button-danger{background:#d32f2f;}
-.button-danger:hover{background:#b71c1c;}
-.table-container{overflow-x:auto;border:1px solid #ccc;border-radius:8px;background:white;}
-table{width:100%;border-collapse:collapse;}
-th{background:linear-gradient(90deg,#7b1fa2,#9c27b0);color:white;padding:8px;cursor:pointer;position:sticky;top:0;font-size:12px;}
-td{padding:5px;border-bottom:1px solid #eee;font-size:12px;word-break:break-word;}
-td.link, td.keterangan{max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-tr:hover{background:#f9f9f9;}
-.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);}
-.modal-content{background:white;padding:15px;width:360px;max-width:90%;margin:80px auto;border-radius:8px;display:grid;grid-template-columns:1fr 1fr;grid-gap:8px;}
-.copy-btn{padding:2px 5px;font-size:10px;margin-left:2px;border-radius:3px;background:#6a1b9a;color:white;cursor:pointer;}
-.copy-btn:hover{background:#4a148c;}
-.pagination{margin-top:10px;display:flex;gap:5px;align-items:center;font-size:12px;}
-.toast{position:fixed;bottom:15px;right:15px;background:#333;color:white;padding:8px 12px;border-radius:5px;display:none;opacity:0;transition:0.5s;z-index:1000;}
-#previewTable{margin-top:10px;border:1px solid #ccc;border-collapse:collapse;}
-#previewTable th, #previewTable td{border:1px solid #ccc;padding:5px;font-size:12px;}
-@media(max-width:600px){.topbar{flex-direction:column;} th, td{font-size:10px;} button{font-size:10px;}}
+body {
+  font-family: 'Segoe UI';
+  background: #121212;
+  margin: 0;
+  color: #e0e0e0;
+}
+
+.header {
+  background: #1e1e2f;
+  text-align: center;
+  padding: 10px;
+}
+
+.container {
+  width: 98%;
+  margin: 10px auto;
+  background: #1a1a2e;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.top-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+input, select {
+  padding: 5px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: none;
+  background: #2a2a3d;
+  color: white;
+}
+
+.btn {
+  padding: 5px 8px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: white;
+}
+
+.btn-primary { background: #6a11cb; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+th {
+  background: #6a11cb;
+  padding: 6px;
+  position: sticky;
+  top: 0;
+}
+
+td {
+  padding: 5px;
+  border-bottom: 1px solid #2a2a3d;
+}
+
+tr:hover { background: #22223a; }
+
+.icon { cursor: pointer; }
+
+/* MODAL */
+.modal {
+  display: none;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+}
+
+.modal-content {
+  background: #1e1e2f;
+  padding: 15px;
+  width: 320px;
+  margin: 6% auto;
+  border-radius: 10px;
+}
+
+.modal-content input,
+.modal-content select {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+/* TOAST */
+#toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: 0.3s;
+  color: white;
+}
+
+.toast-success { background: #2ecc71; }
+.toast-delete { background: #e74c3c; }
+.toast-copy { background: #3498db; }
+
+#toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
 </style>
 </head>
+
 <body>
 
-<h2>Dashboard Akun Final</h2>
+<div class="header">DASHBOARD AKUN</div>
 
-<div class="topbar">
-<input type="text" id="search" placeholder="Cari..." onkeyup="renderTable()">
-<select id="filterWeb" onchange="renderTable()"><option value="">Semua Web</option></select>
-<select id="filterKategori" onchange="renderTable()"><option value="">Semua Kategori</option></select>
-<button onclick="openModal()">+ Tambah</button>
-<button onclick="exportExcel()">Export Excel</button>
-<input type="file" id="fileInput" accept=".xlsx,.csv" onchange="previewImport(event)">
-<button class="button-danger" onclick="clearPreview()">Hapus Preview</button>
-<button class="button-danger" onclick="deleteAllSheetData()">Hapus Semua Data Sheet</button>
+<div class="container">
+
+<div class="top-bar">
+  <input id="search" placeholder="Cari..." onkeyup="renderTable()">
+
+  <select id="filterWeb" onchange="renderTable()">
+    <option value="">Semua Web</option>
+  </select>
+
+  <select id="filterKategori" onchange="renderTable()">
+    <option value="">Semua Kategori</option>
+  </select>
+
+  <button class="btn btn-primary" onclick="openModal()">+ Tambah</button>
 </div>
 
-<div class="table-container">
 <table>
 <thead>
 <tr>
-<th onclick="sortTable('web')">Web ▲▼</th>
-<th onclick="sortTable('kategori')">Kategori ▲▼</th>
+<th>Web</th>
+<th>Kategori</th>
 <th>Akun</th>
 <th>Sandi</th>
 <th>Pin</th>
 <th>Otp</th>
-<th class="link">Link</th>
-<th class="keterangan">Keterangan</th>
+<th>Link</th>
+<th>Keterangan</th>
 <th>Aksi</th>
 </tr>
 </thead>
-<tbody id="tbody"></tbody>
+<tbody id="tableBody"></tbody>
 </table>
+
 </div>
 
-<div id="previewContainer">
-<h4>Preview Import</h4>
-<table id="previewTable">
-<thead>
-<tr>
-<th>Web</th><th>Kategori</th><th>Akun</th><th>Sandi</th><th>Pin</th><th>Otp</th><th>Link</th><th>Keterangan</th>
-</tr>
-</thead>
-<tbody id="previewBody"></tbody>
-</table>
-<button id="confirmImport" style="display:none;" onclick="confirmImport()">Masukkan ke Dashboard</button>
-</div>
-
-<div class="pagination">
-<button onclick="prev()">Prev</button>
-<span id="pageInfo"></span>
-<button onclick="next()">Next</button>
-</div>
-
-<div class="modal" id="modal">
+<!-- MODAL -->
+<div id="modal" class="modal">
 <div class="modal-content">
-<input id="web" placeholder="Web">
-<input id="kategori" placeholder="Kategori">
+
+<h3>Tambah Data</h3>
+
+<select id="web">
+<option>Edan777</option>
+<option>Republik62</option>
+<option>Istana62</option>
+<option>Warga62</option>
+</select>
+
+<select id="kategori">
+<option>Gmail</option>
+<option>Yahoo</option>
+</select>
+
 <input id="akun" placeholder="Akun">
 <input id="sandi" placeholder="Sandi">
-<input id="pin" placeholder="Pin">
-<input id="otp" placeholder="Otp">
+<input id="pin" placeholder="PIN">
+<input id="otp" placeholder="OTP">
 <input id="link" placeholder="Link">
-<input id="keterangan" placeholder="Keterangan">
-<div style="grid-column:span 2;display:flex;justify-content:flex-end;gap:5px;">
+<input id="ket" placeholder="Keterangan">
+
 <button onclick="saveData()">Simpan</button>
 <button onclick="closeModal()">Batal</button>
-</div>
+
 </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- TOAST -->
+<div id="toast"></div>
 
 <script>
-let data=[], previewData=[], editIndex=-1, currentPage=1, perPage=10, sortField="", sortAsc=true;
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbz_hFbkIpXM7n_PN0e2M0wxi0RESqPyV2d-rwI-QwoUKoHwyfP-IgNd2LZvAE3Uyhun/exec"; // Ganti dengan URL Web App
+const API_URL = "https://script.google.com/macros/s/AKfycbw-CA_1pVKAlAdXlxANkGGQlz6F68sLhzu2EV4MS0snZdyDhR9q8QgAZRWR0m-kqhTo/exec";
 
-function showToast(msg){const t=document.getElementById("toast");t.innerText=msg;t.style.display="block";setTimeout(()=>{t.style.opacity=1;},50);setTimeout(()=>{t.style.opacity=0;setTimeout(()=>{t.style.display="none";},500);},1500);}
+let data = [];
+let editRow = null;
 
-async function loadDataFromSheet(){
-  try{const res=await fetch(SHEET_URL);data=await res.json();renderTable();}catch(err){showToast("Gagal memuat data dari Sheet!");}
+// TOAST
+function showToast(msg, type="success") {
+  toast.className = "";
+  toast.classList.add("show");
+
+  if(type==="delete") toast.classList.add("toast-delete");
+  else if(type==="copy") toast.classList.add("toast-copy");
+  else toast.classList.add("toast-success");
+
+  toast.innerText = msg;
+
+  setTimeout(() => toast.classList.remove("show"), 2000);
 }
 
-async function saveDataToSheet(obj){
-  try{await fetch(SHEET_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(obj)});showToast("Data tersimpan!");await loadDataFromSheet();}catch(err){showToast("Gagal menyimpan data!");}
+// UI
+function openModal() {
+  modal.style.display = "block";
+  setTimeout(() => fields[0].focus(), 200);
 }
 
-function saveData(){const obj={web:web.value,kategori:kategori.value,akun:akun.value,sandi:sandi.value,pin:pin.value,otp:otp.value,link:link.value,keterangan:keterangan.value};if(!obj.web||!obj.akun||!obj.sandi){showToast("Web, Akun, Sandi wajib diisi");return;}saveDataToSheet(obj);closeModal();}
-function deleteAllSheetData(){if(!confirm("Yakin hapus semua data?")) return;fetch(SHEET_URL+'?action=deleteAll').then(res=>res.json()).then(result=>{if(result.status==='all_deleted'){showToast("Semua data berhasil dihapus!");loadDataFromSheet();}}).catch(err=>showToast("Gagal menghapus!"));}
+function closeModal() {
+  modal.style.display = "none";
+}
 
-// Fungsi modal, copy, show/hide, preview import, pagination, renderTable tetap seperti versi final sebelumnya
+function resetForm() {
+  akun.value = "";
+  sandi.value = "";
+  pin.value = "";
+  otp.value = "";
+  link.value = "";
+  ket.value = "";
+  editRow = null;
+}
 
-loadDataFromSheet();
+// LOAD
+async function loadData() {
+  let res = await fetch(API_URL);
+  let json = await res.json();
+
+  data = [];
+  json.slice(1).forEach((r,i) => {
+    data.push({
+      row:i+2,
+      web:r[0],
+      kategori:r[1],
+      akun:r[2],
+      sandi:r[3],
+      pin:r[4],
+      otp:r[5],
+      link:r[6],
+      ket:r[7]
+    });
+  });
+
+  renderFilter();
+  renderTable();
+}
+
+// SAVE
+async function saveData() {
+  let d = {
+    web:web.value,
+    kategori:kategori.value,
+    akun:akun.value,
+    sandi:sandi.value,
+    pin:pin.value,
+    otp:otp.value,
+    link:link.value,
+    ket:ket.value
+  };
+
+  if(editRow){
+    d.action="update";
+    d.row=editRow;
+  } else {
+    d.action="add";
+  }
+
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify(d)
+  });
+
+  showToast("Data disimpan", "success");
+  resetForm();
+  closeModal();
+  loadData();
+}
+
+// EDIT
+function editData(d){
+  web.value=d.web;
+  kategori.value=d.kategori;
+  akun.value=d.akun;
+  sandi.value=d.sandi;
+  pin.value=d.pin;
+  otp.value=d.otp;
+  link.value=d.link;
+  ket.value=d.ket;
+
+  editRow=d.row;
+  openModal();
+}
+
+// DELETE
+async function deleteData(row){
+  if(!confirm("Hapus data?")) return;
+
+  await fetch(API_URL,{
+    method:"POST",
+    body:JSON.stringify({action:"delete",row})
+  });
+
+  showToast("Data dihapus", "delete");
+  loadData();
+}
+
+// COPY
+function copyText(text){
+  navigator.clipboard.writeText(text);
+  showToast("Dicopy", "copy");
+}
+
+// FILTER
+function renderFilter(){
+  let webSet=[...new Set(data.map(d=>d.web))];
+  let kategoriSet=[...new Set(data.map(d=>d.kategori))];
+
+  filterWeb.innerHTML='<option value="">Semua Web</option>';
+  filterKategori.innerHTML='<option value="">Semua Kategori</option>';
+
+  webSet.forEach(w=>filterWeb.innerHTML+=`<option>${w}</option>`);
+  kategoriSet.forEach(k=>filterKategori.innerHTML+=`<option>${k}</option>`);
+}
+
+// TABLE (TAMPIL SEMUA)
+function renderTable(){
+  let s = search.value.toLowerCase();
+  tableBody.innerHTML = "";
+
+  let found = false;
+
+  data.forEach(d=>{
+    if(
+      (filterWeb.value && d.web!==filterWeb.value) ||
+      (filterKategori.value && d.kategori!==filterKategori.value) ||
+      (s && !JSON.stringify(d).toLowerCase().includes(s))
+    ) return;
+
+    found = true;
+
+    tableBody.innerHTML+=`
+    <tr>
+      <td>${d.web}</td>
+      <td>${d.kategori}</td>
+      <td>${d.akun} <span class="icon" onclick="copyText('${d.akun}')">📋</span></td>
+      <td>${d.sandi} <span class="icon" onclick="copyText('${d.sandi}')">📋</span></td>
+      <td>${d.pin}</td>
+      <td>${d.otp}</td>
+      <td>${d.link}</td>
+      <td>${d.ket}</td>
+      <td>
+        <span class="icon" onclick='editData(${JSON.stringify(d)})'>✏️</span>
+        <span class="icon" onclick='deleteData(${d.row})'>🗑️</span>
+      </td>
+    </tr>`;
+  });
+
+  if (!found) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="9" style="text-align:center; padding:20px; color:#888;">
+          ❌ Data tidak ditemukan
+        </td>
+      </tr>`;
+  }
+}
+
+// EXCEL MODE
+const fields = [akun, sandi, pin, otp, link, ket, web, kategori];
+
+fields.forEach((field, index) => {
+  field.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+
+      if (e.shiftKey) {
+        if (index > 0) fields[index - 1].focus();
+        return;
+      }
+
+      if (index < fields.length - 1) {
+        fields[index + 1].focus();
+      } else {
+        saveData();
+      }
+    }
+  });
+});
+
+fields.forEach(field => {
+  field.addEventListener("focus", function() {
+    this.select();
+  });
+});
+
+// START
+loadData();
 </script>
+
 </body>
 </html>
